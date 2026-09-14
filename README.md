@@ -49,10 +49,10 @@ Geliştirici: **Tuğra Çimen**
 2. `main` dalına her push'ta `.github/workflows/build-apk.yml` otomatik
    çalışır ve bir **release APK** üretir.
 3. Workflow bittiğinde: **Actions** sekmesi → ilgili çalışma → **Artifacts**
-   bölümünden `NAI-release-apk` dosyasını indirebilirsin.
+   bölümünden `NAI-release-apk` dosyasını indirebilirsiniz.
 4. İstersen `v1.0.0` gibi bir **tag** push ederek (`git tag v1.0.0 && git push
    origin v1.0.0`) otomatik bir **GitHub Release** oluşturup APK'yı oraya da
-   ekletebilirsin.
+   ekletebilirsiniz.
 
 > Not: `android/` klasöründeki `build.gradle`, `AndroidManifest.xml` gibi
 > dosyalar elle hazırlanmıştır. Workflow, sadece eksik olan `gradlew` /
