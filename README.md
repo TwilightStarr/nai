@@ -43,33 +43,7 @@ Geliştirici: **Tuğra Çimen**
   Play Store'a yüklemek istersen kendi keystore'unu oluşturup
   `signingConfigs` bölümünü güncellemen gerekir.
 
-## GitHub Actions ile APK derleme
 
-1. Bu klasörün tamamını bir GitHub deposuna yükle (push et).
-2. `main` dalına her push'ta `.github/workflows/build-apk.yml` otomatik
-   çalışır ve bir **release APK** üretir.
-3. Workflow bittiğinde: **Actions** sekmesi → ilgili çalışma → **Artifacts**
-   bölümünden `NAI-release-apk` dosyasını indirebilirsiniz.
-4. İstersen `v1.0.0` gibi bir **tag** push ederek (`git tag v1.0.0 && git push
-   origin v1.0.0`) otomatik bir **GitHub Release** oluşturup APK'yı oraya da
-   ekletebilirsiniz.
-
-> Not: `android/` klasöründeki `build.gradle`, `AndroidManifest.xml` gibi
-> dosyalar elle hazırlanmıştır. Workflow, sadece eksik olan `gradlew` /
-> `gradle-wrapper.jar` gibi ikili dosyaları tamamlamak için
-> `flutter create --platforms=android .` komutunu çalıştırır; mevcut
-> dosyaların üzerine yazmaz.
-
-### Sorun giderme
-
-- **Gradle/AGP sürüm uyuşmazlığı hatası** alırsan: `android/settings.gradle`
-  içindeki `com.android.application` ve Kotlin eklenti sürümlerini,
-  kullanılan Flutter sürümünün önerdiği güncel sürümlerle değiştir; gerekirse
-  `android/gradle/wrapper/gradle-wrapper.properties` içindeki Gradle
-  sürümünü de yükselt.
-- **"flutter.sdk not set" hatası**: Bu, workflow'un `flutter-action` adımını
-  atlaman durumunda oluşur; CI dosyasını değiştirmediysen bu adım zaten
-  otomatik çalışır.
 
 ## Yerelde çalıştırma (opsiyonel)
 
