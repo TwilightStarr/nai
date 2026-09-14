@@ -1,0 +1,64 @@
+name: NAI APK Derle
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Depoyu al
+        uses: actions/checkout@v4
+
+      - name: Java kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Flutter kur
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Bağımlılıkları al
+        run: flutter pub get
+
+      - name: Android platform dosyalarını tamamla (gradlew vb.)
+        # android/ klasörü repo içinde elle hazırlanmış build.gradle,
+        # AndroidManifest.xml gibi dosyaları içerir. Bu adım sadece
+        # eksik olan gradlew / gradle-wrapper.jar gibi ikili dosyaları
+        # tamamlar; mevcut dosyaların üzerine yazmaz.
+        run: flutter create --platforms=android --org com.tugracimen --project-name nai .
+
+      - name: Bağımlılıkları tekrar al
+        run: flutter pub get
+
+      - name: Uygulama ikonlarını üret
+        run: dart run flutter_launcher_icons
+
+      - name: Analiz (bilgilendirme amaçlı, hataya sebep olmaz)
+        run: flutter analyze || true
+
+      - name: Release APK derle
+        run: flutter build apk --release --target-platform android-arm,android-arm64,android-x64
+
+      - name: APK'yı yükle (workflow çıktısı)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NAI-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+      - name: Etiketli sürüm için GitHub Release oluştur
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
