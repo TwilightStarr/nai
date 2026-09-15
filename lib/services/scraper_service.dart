@@ -195,6 +195,15 @@ class ScraperService {
 
   /// Bir içerik (haber/duyuru) sayfasının tam metnini ve görselini çeker.
   Future<Announcement> fetchDetail(Announcement stub) async {
+    if (_contentFilePattern.hasMatch(stub.url)) {
+      // PDF/Excel/Word/zip gibi ikili dosyalar HTML olarak ayrıştırılamaz;
+      // bunu denemek (ör. "Ders Programı" bağlantılarında olduğu gibi)
+      // anlamsız karakter yığınının açıklama metni olarak görünmesine yol
+      // açıyordu. Bu tür bağlantılarda içerik çekmeden stub'ı olduğu gibi
+      // döndürüyoruz; kullanıcı "Okul sitesinde aç" ile dosyayı doğrudan
+      // açabilir/indirebilir.
+      return stub;
+    }
     try {
       final doc = await _fetchDocument(stub.url);
 
