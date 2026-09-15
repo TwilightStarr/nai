@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
@@ -56,10 +58,18 @@ class ScraperService {
   }
 
   String _decode(List<int> bytes) {
+    // Site UTF-8 olarak servis ediyor; ham baytları tek tek karaktere
+    // çevirmek (fromCharCodes) çok baytlı Türkçe karakterleri bozuyordu
+    // (ör. "Kıyafetleri" -> "KÄ±yafetleri"). Önce düzgün UTF-8 çöz, olmazsa
+    // bozuk baytları görmezden gelerek çöz, o da olmazsa eski davranışa dön.
     try {
-      return String.fromCharCodes(bytes);
+      return utf8.decode(bytes);
     } catch (_) {
-      return '';
+      try {
+        return utf8.decode(bytes, allowMalformed: true);
+      } catch (_) {
+        return String.fromCharCodes(bytes);
+      }
     }
   }
 
@@ -187,6 +197,14 @@ class ScraperService {
   Future<Announcement> fetchDetail(Announcement stub) async {
     try {
       final doc = await _fetchDocument(stub.url);
+
+      // <script>/<style> içerikleri de doc.body.text içine düz metin
+      // olarak karışıyordu (ör. "mainMenuItems(window.location..." gibi
+      // JS kodunun açıklama olarak görünmesi). Metni çıkarmadan önce
+      // bu etiketleri kaldırıyoruz.
+      for (final e in doc.querySelectorAll('script, style, noscript')) {
+        e.remove();
+      }
 
       String? ogImage;
       for (final meta in doc.querySelectorAll('meta')) {
