@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/announcement.dart';
 import '../services/foreground_poller.dart';
@@ -90,16 +91,17 @@ class _HomeScreenState extends State<HomeScreen>
         titleSpacing: 20,
         title: Row(
           children: [
-            const SparkleLogo(size: 28, glow: false),
+            const SparkleLogo(size: 30, glow: false),
             const SizedBox(width: 10),
             ShaderMask(
               shaderCallback: (b) => AppColors.gradient.createShader(b),
-              child: const Text(
+              child: Text(
                 'NAI',
-                style: TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  letterSpacing: 1.2,
+                  fontSize: 22,
+                  letterSpacing: 1.0,
+                  height: 1,
                   color: Colors.white,
                 ),
               ),
