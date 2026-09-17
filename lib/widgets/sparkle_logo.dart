@@ -1,10 +1,13 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Uygulama logosuyla aynı 4 uçlu "kıvılcım" formunu vektörel olarak çizen
-/// widget. Splash ekranı ve uygulama içi başlıklarda kullanılır.
+/// Uygulamanın özgün "N" (Nevzat) monogram logosunu vektörel olarak çizen
+/// widget. Splash ekranı, ana ekran başlığı ve boş liste durumunda kullanılır.
+///
+/// Not: Önceki sürümde burada Google Gemini ikonuna çok benzeyen 4 uçlu bir
+/// "kıvılcım" şekli vardı; marka karışıklığını önlemek için okulun adından
+/// gelen özgün bir harf monogramıyla değiştirildi (bkz. tools/make_icon.py).
 class SparkleLogo extends StatelessWidget {
   const SparkleLogo({super.key, this.size = 72, this.glow = true});
 
@@ -17,42 +20,63 @@ class SparkleLogo extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _SparklePainter(glow: glow),
+        painter: _NMarkPainter(glow: glow),
       ),
     );
   }
 }
 
-class _SparklePainter extends CustomPainter {
-  _SparklePainter({required this.glow});
+class _NMarkPainter extends CustomPainter {
+  _NMarkPainter({required this.glow});
   final bool glow;
 
-  Path _sparklePath(Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final rOuter = size.shortestSide / 2 * 0.86;
-    final rCtrl = rOuter * 0.16;
+  Path _nMarkPath(Size size) {
+    final boxH = size.shortestSide * 0.64;
+    final boxW = boxH * 0.82;
+    final x0 = (size.width - boxW) / 2;
+    final y0 = (size.height - boxH) / 2;
+    final barW = boxW * 0.34;
+    final radius = barW * 0.30;
 
-    final tipAngles = [-math.pi / 2, 0.0, math.pi / 2, math.pi];
-    final ctrlAngles = [-math.pi / 4, math.pi / 4, 3 * math.pi / 4, -3 * math.pi / 4];
+    final bars = Path()
+      ..addRRect(
+        RRect.fromLTRBR(x0, y0, x0 + barW, y0 + boxH, Radius.circular(radius)),
+      )
+      ..addRRect(
+        RRect.fromLTRBR(
+          x0 + boxW - barW,
+          y0,
+          x0 + boxW,
+          y0 + boxH,
+          Radius.circular(radius),
+        ),
+      );
 
-    Offset pt(double r, double a) => Offset(cx + r * math.cos(a), cy + r * math.sin(a));
+    // Sol gövdenin tepesinden sağ gövdenin tabanına inen diyagonal kesit.
+    final top = Offset(x0 + barW / 2, y0);
+    final bottom = Offset(x0 + boxW - barW / 2, y0 + boxH);
+    final dir = bottom - top;
+    final perp = Offset(-dir.dy, dir.dx) / dir.distance;
+    final half = barW * 0.94 / 2;
+    final diagonal = Path()
+      ..moveTo(top.dx + perp.dx * half, top.dy + perp.dy * half)
+      ..lineTo(top.dx - perp.dx * half, top.dy - perp.dy * half)
+      ..lineTo(bottom.dx - perp.dx * half, bottom.dy - perp.dy * half)
+      ..lineTo(bottom.dx + perp.dx * half, bottom.dy + perp.dy * half)
+      ..close();
 
-    final tips = tipAngles.map((a) => pt(rOuter, a)).toList();
-    final ctrls = ctrlAngles.map((a) => pt(rCtrl, a)).toList();
+    // Döndürülmüş diyagonalin köşeleri harfin kutusunun az dışına taşabilir;
+    // temiz bir kenar için harfin sınır kutusuyla kesişimini al.
+    final bounds = Path()..addRect(Rect.fromLTWH(x0, y0, boxW, boxH));
+    final clippedDiagonal =
+        Path.combine(PathOperation.intersect, diagonal, bounds);
 
-    final path = Path()..moveTo(tips[0].dx, tips[0].dy);
-    for (var i = 0; i < tips.length; i++) {
-      final next = tips[(i + 1) % tips.length];
-      path.quadraticBezierTo(ctrls[i].dx, ctrls[i].dy, next.dx, next.dy);
-    }
-    path.close();
-    return path;
+    return Path.combine(PathOperation.union, bars, clippedDiagonal);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final path = _sparklePath(size);
+    final path = _nMarkPath(size);
     final shader = AppColors.gradient.createShader(
       Rect.fromLTWH(0, 0, size.width, size.height),
     );
@@ -70,5 +94,5 @@ class _SparklePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SparklePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _NMarkPainter oldDelegate) => false;
 }
