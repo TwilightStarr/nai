@@ -2,12 +2,15 @@
 NAI uygulama ikonunu üretir.
 - app_icon.png: 1024x1024, koyu arka planlı, tam ikon (Play/legacy launcher için)
 - app_icon_fg.png: 1024x1024, şeffaf arka planlı ön plan (adaptive icon foreground)
-- splash.png: 512x512, sadece kıvılcım (splash ekranı için)
+- splash.png: 512x512, sadece amblem (splash ekranı için)
 
-Stil: Gemini benzeri 4 köşeli "kıvılcım" (sparkle) formu, mor->mavi->camgöbeği
-gradyan, koyu tema ile uyumlu.
+Stil: Okulun adından ("Nevzat") gelen özgün bir "N" monogramı; iki dikey
+gövde + bağlayıcı diyagonalden oluşan modern amblem, mor->mavi->camgöbeği
+gradyan, koyu tema ile uyumlu. (Önceki sürümdeki 4 uçlu "kıvılcım" şekli
+Google Gemini ikonuna çok benziyordu; marka karışıklığını önlemek için
+özgün bir monogramla değiştirildi.)
 """
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 import math
 
 SIZE = 1024
@@ -47,58 +50,57 @@ def make_gradient(size):
     return img
 
 
-def sparkle_path(cx, cy, r_outer, r_inner):
-    """4 köşeli kıvılcım (Gemini benzeri) yıldız yolu döndürür."""
-    pts = []
-    n_points = 4
-    for i in range(n_points * 2):
-        angle = math.pi / n_points * i - math.pi / 2
-        r = r_outer if i % 2 == 0 else r_inner
-        # Kıvılcım formunu daha keskin/konkav yapmak için üssel eğri uygula
-        x = cx + r * math.cos(angle)
-        y = cy + r * math.sin(angle)
-        pts.append((x, y))
-    return pts
+def _perp_offset(p_from, p_to, half_thickness):
+    """p_from->p_to doğrultusuna dik birim vektörü half_thickness ile ölçekler."""
+    dx = p_to[0] - p_from[0]
+    dy = p_to[1] - p_from[1]
+    length = math.hypot(dx, dy) or 1
+    px, py = -dy / length, dx / length
+    return px * half_thickness, py * half_thickness
 
 
-def _quad_bezier(p0, p1, p2, steps):
-    pts = []
-    for i in range(steps + 1):
-        t = i / steps
-        mt = 1 - t
-        x = mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0]
-        y = mt * mt * p0[1] + 2 * mt * t * p1[1] + t * t * p2[1]
-        pts.append((x, y))
-    return pts
-
-
-def make_sparkle_mask(size, scale=0.62, waist=0.16):
-    """Klasik 4 uçlu 'kıvılcım' (sparkle) formu: 4 sivri uç + aralarında
-    içbükey eğriler. Uçlar arasındaki eğri, merkeze yakın bir kontrol
-    noktasından geçen quadratic bezier ile çizilir (Gemini logosuna benzer)."""
+def make_n_mark_mask(size, scale=0.62, bar_ratio=0.30):
+    """Özgün 'N' monogramı: iki dikey (yuvarlak köşeli) gövde + onları
+    birleştiren diyagonal kesit. Üç parça da aynı gradyanla dolduğundan
+    kesişim yerlerinde dikiş görünmez, tek parça bir harf gibi görünür."""
     ss = 4  # supersample ile pürüzsüzleştirme
     big = size * ss
     mask = Image.new("L", (big, big), 0)
     d = ImageDraw.Draw(mask)
-    cx = cy = big / 2
-    r_outer = big / 2 * scale
-    r_ctrl = r_outer * waist
 
-    tip_angles = [-math.pi / 2, 0, math.pi / 2, math.pi]  # üst, sağ, alt, sol
-    ctrl_angles = [-math.pi / 4, math.pi / 4, 3 * math.pi / 4, -3 * math.pi / 4]
+    box_w = big * scale * 0.82
+    box_h = big * scale
+    x0 = (big - box_w) / 2
+    y0 = (big - box_h) / 2
+    bar_w = box_w * bar_ratio
+    radius = bar_w * 0.30
 
-    tips = [(cx + r_outer * math.cos(a), cy + r_outer * math.sin(a)) for a in tip_angles]
-    ctrls = [(cx + r_ctrl * math.cos(a), cy + r_ctrl * math.sin(a)) for a in ctrl_angles]
+    # Sol gövde
+    d.rounded_rectangle(
+        [x0, y0, x0 + bar_w, y0 + box_h], radius=radius, fill=255
+    )
+    # Sağ gövde
+    d.rounded_rectangle(
+        [x0 + box_w - bar_w, y0, x0 + box_w, y0 + box_h], radius=radius, fill=255
+    )
+    # Diyagonal (sol gövdenin tepesinden sağ gövdenin tabanına)
+    top = (x0 + bar_w / 2, y0)
+    bottom = (x0 + box_w - bar_w / 2, y0 + box_h)
+    ox, oy = _perp_offset(top, bottom, bar_w * 0.94 / 2)
+    diag_pts = [
+        (top[0] + ox, top[1] + oy),
+        (top[0] - ox, top[1] - oy),
+        (bottom[0] - ox, bottom[1] - oy),
+        (bottom[0] + ox, bottom[1] + oy),
+    ]
+    d.polygon(diag_pts, fill=255)
 
-    pts = []
-    n = len(tips)
-    for i in range(n):
-        p0 = tips[i]
-        p1 = ctrls[i]
-        p2 = tips[(i + 1) % n]
-        pts.extend(_quad_bezier(p0, p1, p2, 60)[:-1])
+    # Diyagonalin döndürülmüş köşeleri gövde kutusunun az dışına taşabilir;
+    # harfin dikdörtgen sınırıyla kesişimini alarak temiz bir kenar elde et.
+    clip = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(clip).rectangle([x0, y0, x0 + box_w, y0 + box_h], fill=255)
+    mask = ImageChops.multiply(mask, clip)
 
-    d.polygon(pts, fill=255)
     mask = mask.filter(ImageFilter.GaussianBlur(big // 300))
     mask = mask.resize((size, size), Image.LANCZOS)
     return mask
@@ -106,7 +108,7 @@ def make_sparkle_mask(size, scale=0.62, waist=0.16):
 
 def build_icon(with_background: bool, out_path: str):
     grad = make_gradient(SIZE)
-    sparkle_mask = make_sparkle_mask(SIZE, scale=0.60 if with_background else 0.86)
+    sparkle_mask = make_n_mark_mask(SIZE, scale=0.46 if with_background else 0.62)
 
     if with_background:
         bg = Image.new("RGB", (SIZE, SIZE), (11, 15, 25))  # #0B0F19 koyu zemin
@@ -133,7 +135,7 @@ def build_icon(with_background: bool, out_path: str):
 
 def build_splash(out_path: str, size=512):
     grad = make_gradient(size)
-    mask = make_sparkle_mask(size, scale=0.72)
+    mask = make_n_mark_mask(size, scale=0.60)
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     sparkle_rgba = Image.new("RGBA", (size, size))
     sparkle_rgba.paste(grad, (0, 0))
